@@ -7,26 +7,28 @@ document.addEventListener('DOMContentLoaded', () => {
   const heroInfoBtn = document.querySelector('.btn-info');
   
   const trendingScroller = document.getElementById('trendingScroller');
+  const popularScroller = document.getElementById('popularScroller');
+  const topRatedScroller = document.getElementById('topRatedScroller');
   const searchResultsScroller = document.getElementById('searchResultsScroller');
   const searchResultsRow = document.getElementById('searchResultsRow');
   const searchResultsTitle = document.getElementById('searchResultsTitle');
   
   const searchInput = document.getElementById('searchInput');
   const searchBtn = document.getElementById('searchBtn');
-  const homeLink = document.getElementById('homeLink');
-  const header = document.getElementById('mainHeader');
+  const navLinks = document.querySelectorAll('.nav-left nav a');
+  const header = document.querySelector('.netflix-header');
   const movieModal = document.getElementById('movieModal');
   const closeModalBtn = document.querySelector('.close');
   const loadingOverlay = document.getElementById('loadingOverlay');
   const detailsDiv = document.getElementById('movieDetails');
 
-  const PLACEHOLDER_POSTER = 'https://via.placeholder.com/500x750/1a1a1a/00bfff?text=Oblivion';
+  const PLACEHOLDER_POSTER = 'https://via.placeholder.com/500x750/1a1a1a/ffffff?text=No+Image';
   
-  // Stato dell'app
-  let currentHeroMovie = null;
+  let currentMode = 'trending';
+  let lastQuery = '';
   let lastFocusedEl = null;
+  let currentHeroMovie = null;
   let isSearchActive = false;
-  let currentTrendingMovies = [];
 
   // Inizializzazione
   initApp();
@@ -37,22 +39,11 @@ document.addEventListener('DOMContentLoaded', () => {
     if (e.key === 'Enter') performSearch();
   });
 
-  homeLink.addEventListener('click', (e) => {
-    e.preventDefault();
-    homeLink.classList.add('active');
-    
-    // Nascondi risultati ricerca e mostra trending
-    isSearchActive = false;
-    searchResultsRow.style.display = 'none';
-    
-    // Scroll alla home
-    window.scrollTo({
-      top: 0,
-      behavior: 'smooth'
+  navLinks.forEach(link => {
+    link.addEventListener('click', (e) => {
+      e.preventDefault();
+      handleNavClick(link);
     });
-    
-    // Reset search input
-    searchInput.value = '';
   });
 
   // Modal events
@@ -88,8 +79,17 @@ document.addEventListener('DOMContentLoaded', () => {
     try {
       await Promise.all([
         loadHeroMovie(),
-        loadTrendingMovies()
+        loadTrendingMovies(),
+        loadPopularMovies(),
+        loadTopRatedMovies()
       ]);
+      
+      // Imposta il primo film trending come hero
+      const trendingData = await fetchTrendingMovies();
+      if (trendingData?.results?.length > 0) {
+        currentHeroMovie = trendingData.results[0];
+        updateHero(currentHeroMovie);
+      }
     } catch (error) {
       console.error('Errore inizializzazione:', error);
       showError('Impossibile caricare i dati. Riprova più tardi.');
@@ -98,9 +98,43 @@ document.addEventListener('DOMContentLoaded', () => {
     }
   }
 
+  // Gestione click navigation
+  function handleNavClick(link) {
+    navLinks.forEach(l => l.classList.remove('active'));
+    link.classList.add('active');
+    
+    currentMode = link.dataset.category;
+    isSearchActive = false;
+    lastQuery = '';
+    searchInput.value = '';
+    searchResultsRow.style.display = 'none';
+    
+    // Mostra tutte le row
+    document.querySelectorAll('.row:not(#searchResultsRow)').forEach(row => {
+      row.style.display = 'block';
+    });
+    
+    // Scrolling smooth alla row corrispondente
+    const targetRow = document.getElementById(`${currentMode}Row`);
+    if (targetRow) {
+      targetRow.scrollIntoView({
+        behavior: 'smooth',
+        block: 'start'
+      });
+    }
+    
+    // Aggiorna hero se siamo in trending
+    if (currentMode === 'trending' && trendingScroller.children.length > 0) {
+      const firstMovie = trendingScroller.children[0];
+      if (firstMovie.dataset.movieId) {
+        // Potresti voler aggiornare l'hero con il primo film trending
+      }
+    }
+  }
+
   // Gestione scroll header
   function handleScroll() {
-    if (window.scrollY > 50) {
+    if (window.scrollY > 100) {
       header.classList.add('scrolled');
     } else {
       header.classList.remove('scrolled');
@@ -122,6 +156,20 @@ document.addEventListener('DOMContentLoaded', () => {
     errorDiv.innerHTML = `
       <i class="fas fa-exclamation-triangle"></i>
       <span>${message}</span>
+    `;
+    errorDiv.style.cssText = `
+      position: fixed;
+      top: 100px;
+      right: 20px;
+      background: #e50914;
+      color: white;
+      padding: 15px 20px;
+      border-radius: 4px;
+      display: flex;
+      align-items: center;
+      gap: 10px;
+      z-index: 10000;
+      animation: slideIn 0.3s ease;
     `;
     
     document.body.appendChild(errorDiv);
@@ -169,8 +217,9 @@ document.addEventListener('DOMContentLoaded', () => {
       const data = await fetchTrendingMovies();
       const movies = data?.results || [];
       if (movies.length > 0) {
-        // Prendi il primo film per l'hero
-        currentHeroMovie = movies[0];
+        // Prendi un film casuale per l'hero
+        const randomIndex = Math.floor(Math.random() * Math.min(5, movies.length));
+        currentHeroMovie = movies[randomIndex];
         updateHero(currentHeroMovie);
       }
     } catch (err) {
@@ -213,22 +262,37 @@ document.addEventListener('DOMContentLoaded', () => {
     };
   }
 
-  // Caricamento film trending
+  // Caricamento categorie film
   async function loadTrendingMovies() {
     try {
       const data = await fetchTrendingMovies();
-      currentTrendingMovies = data?.results || [];
-      displayMoviesInScroller(currentTrendingMovies, trendingScroller, 'trending');
-      
-      // Inizializza scroll infinito per trending
-      initInfiniteScroll(trendingScroller, '.movie-card');
+      displayMoviesInScroller(data?.results || [], trendingScroller, 'trending');
     } catch (err) {
       console.error('Errore caricamento trending:', err);
-      trendingScroller.innerHTML = '<div class="no-movies"><i class="fas fa-film"></i><p>Errore nel caricamento dei film</p></div>';
+      trendingScroller.innerHTML = '<p class="error-message">Errore nel caricamento dei film in trend</p>';
     }
   }
 
-  // Display movies in scroller con layout a card
+  async function loadPopularMovies() {
+    try {
+      const data = await fetchPopularMovies(1);
+      displayMoviesInScroller(data?.results || [], popularScroller, 'popular');
+    } catch (err) {
+      console.error('Errore caricamento popolari:', err);
+      popularScroller.innerHTML = '<p class="error-message">Errore nel caricamento dei film popolari</p>';
+    }
+  }
+
+  async function loadTopRatedMovies() {
+    try {
+      const data = await fetchTopRatedMovies(1);
+      displayMoviesInScroller(data?.results || [], topRatedScroller, 'top_rated');
+    } catch (err) {
+      console.error('Errore caricamento top rated:', err);
+      topRatedScroller.innerHTML = '<p class="error-message">Errore nel caricamento dei top rated</p>';
+    }
+  }
+
   function displayMoviesInScroller(movies, scrollerElement, category) {
     scrollerElement.innerHTML = '';
     
@@ -249,14 +313,8 @@ document.addEventListener('DOMContentLoaded', () => {
       scrollerElement.appendChild(movieCard);
     });
     
-    // Aggiungi bottoni di scroll
-    const container = scrollerElement.closest('.scroller-container');
-    if (container) {
-      addScrollButtons(container, scrollerElement);
-    }
-    
-    // Aggiorna counter
-    updateRowCounter(scrollerElement);
+    // Aggiungi bottoni di navigazione per lo scroll
+    addScrollButtons(scrollerElement);
   }
 
   function createMovieCard(movie, category) {
@@ -271,9 +329,6 @@ document.addEventListener('DOMContentLoaded', () => {
         ? `${TMDB_IMAGE_BASE}${movie.backdrop_path}`
         : PLACEHOLDER_POSTER;
     
-    const year = movie.release_date ? movie.release_date.split('-')[0] : 'N/A';
-    const rating = movie.vote_average ? movie.vote_average.toFixed(1) : 'N/A';
-    
     card.innerHTML = `
       <div class="poster-container">
         <img src="${imageUrl}" 
@@ -284,9 +339,9 @@ document.addEventListener('DOMContentLoaded', () => {
           <div class="movie-info">
             <h4>${escapeHtml(movie.title)}</h4>
             <div class="movie-meta">
-              <span class="movie-year">${year}</span>
+              <span class="movie-year">${movie.release_date ? movie.release_date.split('-')[0] : 'N/A'}</span>
               <span class="movie-rating">
-                <i class="fas fa-star"></i> ${rating}
+                <i class="fas fa-star"></i> ${movie.vote_average ? movie.vote_average.toFixed(1) : 'N/A'}
               </span>
             </div>
             <button class="quick-view-btn">
@@ -313,134 +368,56 @@ document.addEventListener('DOMContentLoaded', () => {
       showMovieDetails(movie.id);
     });
     
+    // Hover effects
+    card.addEventListener('mouseenter', () => {
+      card.style.transform = 'scale(1.05)';
+      card.style.zIndex = '10';
+    });
+    
+    card.addEventListener('mouseleave', () => {
+      card.style.transform = 'scale(1)';
+      card.style.zIndex = '1';
+    });
+    
     return card;
   }
 
-  function addScrollButtons(container, scrollerElement) {
-    const leftBtn = container.querySelector('.scroll-left');
-    const rightBtn = container.querySelector('.scroll-right');
-    
-    if (leftBtn && rightBtn) {
-      // Rimuovi eventuali listener precedenti
-      leftBtn.replaceWith(leftBtn.cloneNode(true));
-      rightBtn.replaceWith(rightBtn.cloneNode(true));
-      
-      const newLeftBtn = container.querySelector('.scroll-left');
-      const newRightBtn = container.querySelector('.scroll-right');
-      
-      newLeftBtn.addEventListener('click', () => {
-        scrollToPrevious(scrollerElement);
-      });
-      
-      newRightBtn.addEventListener('click', () => {
-        scrollToNext(scrollerElement);
-      });
-    }
-  }
-
-  function scrollToNext(scrollerElement) {
-    const cardWidth = 240; // Larghezza card + gap
-    const visibleWidth = scrollerElement.clientWidth;
-    const scrollAmount = Math.floor(visibleWidth / cardWidth) * cardWidth;
-    
-    let newScroll = scrollerElement.scrollLeft + scrollAmount;
-    const maxScroll = scrollerElement.scrollWidth - visibleWidth;
-    
-    if (newScroll > maxScroll) {
-      // Torna all'inizio (scroll infinito)
-      newScroll = 0;
-    }
-    
-    scrollerElement.scrollTo({
-      left: newScroll,
-      behavior: 'smooth'
+  function addScrollButtons(scrollerElement) {
+    // Funzionalità di scroll tramite mouse wheel
+    scrollerElement.addEventListener('wheel', (e) => {
+      e.preventDefault();
+      scrollerElement.scrollLeft += e.deltaY;
     });
-    
-    setTimeout(() => updateRowCounter(scrollerElement), 300);
-  }
-
-  function scrollToPrevious(scrollerElement) {
-    const cardWidth = 240;
-    const visibleWidth = scrollerElement.clientWidth;
-    const scrollAmount = Math.floor(visibleWidth / cardWidth) * cardWidth;
-    
-    let newScroll = scrollerElement.scrollLeft - scrollAmount;
-    
-    if (newScroll < 0) {
-      // Vai alla fine (scroll infinito)
-      newScroll = scrollerElement.scrollWidth - visibleWidth;
-    }
-    
-    scrollerElement.scrollTo({
-      left: newScroll,
-      behavior: 'smooth'
-    });
-    
-    setTimeout(() => updateRowCounter(scrollerElement), 300);
-  }
-
-  function initInfiniteScroll(scrollerElement, itemSelector) {
-    // Clona gli elementi per effetto infinito
-    const items = scrollerElement.querySelectorAll(itemSelector);
-    const cloneCount = 5; // Numero di elementi da clonare
-    
-    items.forEach((item, index) => {
-      if (index < cloneCount) {
-        const clone = item.cloneNode(true);
-        scrollerElement.appendChild(clone);
-        
-        // Re-attach event listeners per i cloni
-        clone.addEventListener('click', () => {
-          const movieId = clone.dataset.movieId;
-          if (movieId) showMovieDetails(movieId);
-        });
-      }
-    });
-  }
-
-  function updateRowCounter(scrollerElement) {
-    const container = scrollerElement.closest('.row');
-    if (!container) return;
-    
-    const counter = container.querySelector('.row-counter');
-    if (!counter) return;
-    
-    const cardWidth = 240;
-    const visibleWidth = scrollerElement.clientWidth;
-    const currentScroll = scrollerElement.scrollLeft;
-    
-    const currentIndex = Math.floor(currentScroll / cardWidth) + 1;
-    const totalCards = scrollerElement.children.length;
-    const visibleCards = Math.floor(visibleWidth / cardWidth);
-    const totalPages = Math.ceil(totalCards / visibleCards);
-    
-    counter.textContent = `${currentIndex}/${totalPages}`;
   }
 
   // Ricerca film
   async function performSearch() {
     const query = searchInput.value.trim();
     if (!query) {
-      // Se la query è vuota, torna alla home
+      // Se la query è vuota, mostra le categorie normali
       isSearchActive = false;
       searchResultsRow.style.display = 'none';
-      homeLink.click();
+      document.querySelectorAll('.row:not(#searchResultsRow)').forEach(row => {
+        row.style.display = 'block';
+      });
       return;
     }
     
     showLoading();
     try {
       isSearchActive = true;
+      lastQuery = query;
       
-      // Mostra solo i risultati
+      // Nascondi tutte le row tranne i risultati
+      document.querySelectorAll('.row:not(#searchResultsRow)').forEach(row => {
+        row.style.display = 'none';
+      });
+      
       searchResultsRow.style.display = 'block';
       searchResultsTitle.textContent = `Risultati per: "${query}"`;
       
       const data = await searchMovies(query, 1);
       displayMoviesInScroller(data?.results || [], searchResultsScroller, 'search');
-      
-      // Inizializza scroll infinito per risultati
-      initInfiniteScroll(searchResultsScroller, '.movie-card');
       
       // Scrolling ai risultati
       searchResultsRow.scrollIntoView({
@@ -449,7 +426,7 @@ document.addEventListener('DOMContentLoaded', () => {
       });
     } catch (err) {
       console.error('Errore ricerca:', err);
-      searchResultsScroller.innerHTML = '<div class="no-movies"><i class="fas fa-search"></i><p>Errore nella ricerca</p></div>';
+      searchResultsScroller.innerHTML = '<p class="error-message">Errore nella ricerca. Riprova più tardi.</p>';
       showError('Errore nella ricerca');
     } finally {
       hideLoading();
@@ -499,7 +476,7 @@ document.addEventListener('DOMContentLoaded', () => {
         
         <div class="detail-info">
           <h2>${escapeHtml(movie.title)}</h2>
-          ${movie.tagline ? `<p class="movie-tagline">"${escapeHtml(movie.tagline)}"</p>` : ''}
+          <p class="movie-tagline">${escapeHtml(movie.tagline || '')}</p>
           
           <div class="detail-meta">
             <span class="meta-item">
@@ -511,24 +488,18 @@ document.addEventListener('DOMContentLoaded', () => {
             <span class="meta-item">
               <i class="fas fa-star"></i> ${movie.vote_average ? movie.vote_average.toFixed(1) : 'N/A'}/10
             </span>
-            ${movie.vote_count ? `
-              <span class="meta-item">
-                <i class="fas fa-users"></i> ${movie.vote_count.toLocaleString()} voti
-              </span>
-            ` : ''}
+            <span class="meta-item">
+              <i class="fas fa-users"></i> ${movie.vote_count ? movie.vote_count.toLocaleString() : '0'} voti
+            </span>
           </div>
           
-          ${movie.genres?.length ? `
-            <div class="genres">
-              ${movie.genres.map(g => `<span class="genre">${escapeHtml(g.name)}</span>`).join('')}
-            </div>
-          ` : ''}
+          <div class="genres">
+            ${movie.genres?.map(g => `<span class="genre">${escapeHtml(g.name)}</span>`).join('') || ''}
+          </div>
           
-          ${movie.original_title && movie.original_title !== movie.title ? `
-            <p class="original-title">
-              <strong>Titolo Originale:</strong> ${escapeHtml(movie.original_title)}
-            </p>
-          ` : ''}
+          <p class="original-title">
+            <strong>Titolo Originale:</strong> ${escapeHtml(movie.original_title)}
+          </p>
         </div>
       </div>
       
@@ -636,19 +607,179 @@ document.addEventListener('DOMContentLoaded', () => {
       .replaceAll("'", '&#039;');
   }
 
-  // Aggiorna i contatori durante lo scroll
-  document.addEventListener('scroll', () => {
-    [trendingScroller, searchResultsScroller].forEach(scroller => {
-      if (scroller.children.length > 0) {
-        updateRowCounter(scroller);
-      }
-    });
-  });
-
-  // Inizializza il contatore per lo scroller trending
-  setTimeout(() => {
-    if (trendingScroller.children.length > 0) {
-      updateRowCounter(trendingScroller);
+  // Aggiungi stili CSS dinamici
+  const style = document.createElement('style');
+  style.textContent = `
+    @keyframes slideIn {
+      from { transform: translateX(100%); opacity: 0; }
+      to { transform: translateX(0); opacity: 1; }
     }
-  }, 1000);
+    
+    @keyframes slideOut {
+      from { transform: translateX(0); opacity: 1; }
+      to { transform: translateX(100%); opacity: 0; }
+    }
+    
+    .movie-card {
+      position: relative;
+      transition: transform 0.3s ease;
+      flex-shrink: 0;
+      width: 220px;
+      cursor: pointer;
+    }
+    
+    .poster-container {
+      position: relative;
+      width: 100%;
+      height: 330px;
+      overflow: hidden;
+      border-radius: 4px;
+    }
+    
+    .movie-poster {
+      width: 100%;
+      height: 100%;
+      object-fit: cover;
+      transition: transform 0.3s ease;
+    }
+    
+    .movie-overlay {
+      position: absolute;
+      bottom: 0;
+      left: 0;
+      right: 0;
+      background: linear-gradient(to top, rgba(0,0,0,0.9), transparent);
+      padding: 20px 15px 15px;
+      opacity: 0;
+      transition: opacity 0.3s ease;
+    }
+    
+    .movie-card:hover .movie-overlay {
+      opacity: 1;
+    }
+    
+    .movie-card:hover .movie-poster {
+      transform: scale(1.1);
+    }
+    
+    .movie-info h4 {
+      margin: 0 0 5px;
+      font-size: 16px;
+      white-space: nowrap;
+      overflow: hidden;
+      text-overflow: ellipsis;
+    }
+    
+    .movie-meta {
+      display: flex;
+      justify-content: space-between;
+      align-items: center;
+      font-size: 12px;
+      color: #ccc;
+      margin-bottom: 10px;
+    }
+    
+    .movie-rating {
+      color: #f5c518;
+    }
+    
+    .quick-view-btn {
+      background: rgba(229, 9, 20, 0.9);
+      color: white;
+      border: none;
+      padding: 8px 12px;
+      border-radius: 4px;
+      font-size: 12px;
+      cursor: pointer;
+      width: 100%;
+      transition: background 0.3s;
+    }
+    
+    .quick-view-btn:hover {
+      background: #e50914;
+    }
+    
+    .error-message {
+      color: #e50914;
+      padding: 20px;
+      text-align: center;
+      font-size: 14px;
+    }
+    
+    .no-movies {
+      text-align: center;
+      padding: 40px;
+      color: #666;
+    }
+    
+    .no-movies i {
+      font-size: 48px;
+      margin-bottom: 10px;
+      display: block;
+    }
+    
+    .detail-meta {
+      display: flex;
+      gap: 15px;
+      margin: 15px 0;
+      flex-wrap: wrap;
+    }
+    
+    .meta-item {
+      display: flex;
+      align-items: center;
+      gap: 5px;
+      color: #ccc;
+      font-size: 14px;
+    }
+    
+    .movie-tagline {
+      font-style: italic;
+      color: #888;
+      margin: 5px 0 15px;
+    }
+    
+    .original-title {
+      margin-top: 10px;
+      color: #aaa;
+    }
+    
+    .overview {
+      line-height: 1.6;
+      font-size: 16px;
+    }
+    
+    .trailer-header {
+      display: flex;
+      justify-content: space-between;
+      align-items: center;
+      margin-bottom: 15px;
+    }
+    
+    .close-trailer-btn {
+      background: none;
+      border: none;
+      color: white;
+      cursor: pointer;
+      font-size: 18px;
+      padding: 5px;
+    }
+    
+    .trailer-wrapper {
+      position: relative;
+      padding-bottom: 56.25%; /* 16:9 Aspect Ratio */
+      height: 0;
+      overflow: hidden;
+    }
+    
+    .trailer-wrapper iframe {
+      position: absolute;
+      top: 0;
+      left: 0;
+      width: 100%;
+      height: 100%;
+      border-radius: 8px;
+    }
+  `;
+  document.head.appendChild(style);
 });
