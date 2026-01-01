@@ -1,52 +1,46 @@
-<!DOCTYPE html>
+<!doctype html>
 <html lang="it">
 <head>
-    <meta charset="UTF-8">
-    <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>La Mia Collezione Film</title>
-    <link rel="stylesheet" href="css/style.css">
-    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
+  <meta charset="utf-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1" />
+  <title>I miei film</title>
+
+  <link rel="stylesheet" href="css/style.css" />
+  <link rel="preconnect" href="https://image.tmdb.org" />
 </head>
+
 <body>
-    <header>
-        <div class="container">
-            <h1><i class="fas fa-film"></i> La Mia Collezione Film</h1>
-            <div class="search-box">
-                <input type="text" id="searchInput" placeholder="Cerca film...">
-                <button id="searchBtn"><i class="fas fa-search"></i></button>
-            </div>
-        </div>
-    </header>
+  <header class="header">
+    <div class="container header-row">
+      <h1 class="logo">I miei film</h1>
 
-    <nav>
-        <div class="container">
-            <button class="nav-btn active" data-category="trending">Trending</button>
-            <button class="nav-btn" data-category="popular">Popolari</button>
-            <button class="nav-btn" data-category="top_rated">Top Rated</button>
-        </div>
-    </nav>
-
-    <main class="container">
-        <div id="moviesGrid" class="movies-grid">
-            <!-- I film appariranno qui -->
-        </div>
-    </main>
-
-    <!-- Modal per dettagli film -->
-    <div id="movieModal" class="modal">
-        <div class="modal-content">
-            <span class="close">&times;</span>
-            <div id="movieDetails"></div>
-        </div>
+      <div class="search">
+        <input id="searchInput" type="text" placeholder="Cerca un film..." autocomplete="off" />
+        <button id="searchBtn" type="button">Cerca</button>
+      </div>
     </div>
 
-    <footer>
-        <div class="container">
-            <p>© 2024 La Mia Collezione Film - Dati forniti da TMDb</p>
-        </div>
-    </footer>
+    <nav class="nav container">
+      <button class="nav-btn active" data-category="trending" type="button">Trending</button>
+      <button class="nav-btn" data-category="popular" type="button">Popolari</button>
+      <button class="nav-btn" data-category="top_rated" type="button">Top Rated</button>
+    </nav>
+  </header>
 
-    <script src="js/tmdb.js"></script>
-    <script src="js/app.js"></script>
+  <main class="container">
+    <div id="statusBar" class="status" aria-live="polite"></div>
+    <section id="moviesGrid" class="grid" aria-label="Lista film"></section>
+  </main>
+
+  <!-- MODAL -->
+  <div id="movieModal" class="modal" aria-hidden="true" role="dialog" aria-label="Dettagli film">
+    <div class="modal-content" role="document">
+      <button class="close" type="button" aria-label="Chiudi">×</button>
+      <div id="movieDetails"></div>
+    </div>
+  </div>
+
+  <script src="js/tmdb.js"></script>
+  <script src="js/app.js"></script>
 </body>
 </html>
