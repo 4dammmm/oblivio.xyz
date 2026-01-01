@@ -1,35 +1,64 @@
+<!-- index.html -->
 <!doctype html>
 <html lang="it">
-<head>
-  <meta charset="utf-8">
-  <meta name="viewport" content="width=device-width, initial-scale=1">
-  <title>I miei film</title>
-  <link rel="stylesheet" href="css/style.css">
-</head>
+  <head>
+    <meta charset="utf-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1" />
+    <title>I miei film</title>
 
-<body>
+    <link rel="stylesheet" href="css/style.css" />
+    <link rel="preconnect" href="https://image.tmdb.org" />
+  </head>
 
-<header class="netflix-header">
-  <div class="nav-left">
-    <span class="logo">NETFLIX</span>
-    <nav>
-      <a class="active">Home</a>
-      <a>Serie TV</a>
-      <a>Film</a>
-      <a>Nuovi e popolari</a>
-    </nav>
-  </div>
+  <body>
+    <header class="header">
+      <div class="container header-row">
+        <h1 class="logo">I miei film</h1>
 
-  <div class="nav-right">
-    <input id="searchInput" placeholder="Titoli, persone, generi">
-  </div>
-</header>
+        <div class="search">
+          <input
+            id="searchInput"
+            type="text"
+            placeholder="Cerca un film..."
+            autocomplete="off"
+          />
+          <button id="searchBtn" type="button">Cerca</button>
+        </div>
+      </div>
 
-<main>
-  <section id="hero" class="hero"></section>
-  <section id="rows" class="rows"></section>
-</main>
+      <nav class="nav container" aria-label="Categorie">
+        <button class="nav-btn active" data-category="trending" type="button">
+          Trending
+        </button>
+        <button class="nav-btn" data-category="popular" type="button">
+          Popolari
+        </button>
+        <button class="nav-btn" data-category="top_rated" type="button">
+          Top Rated
+        </button>
+      </nav>
+    </header>
 
-<script src="js/app.js"></script>
-</body>
+    <main class="container">
+      <div id="statusBar" class="status" aria-live="polite"></div>
+      <section id="moviesGrid" class="grid" aria-label="Lista film"></section>
+    </main>
+
+    <!-- MODAL -->
+    <div
+      id="movieModal"
+      class="modal"
+      aria-hidden="true"
+      role="dialog"
+      aria-label="Dettagli film"
+    >
+      <div class="modal-content" role="document">
+        <button class="close" type="button" aria-label="Chiudi">×</button>
+        <div id="movieDetails"></div>
+      </div>
+    </div>
+
+    <script src="js/tmdb.js"></script>
+    <script src="js/app.js"></script>
+  </body>
 </html>
