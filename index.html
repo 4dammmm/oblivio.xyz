@@ -1,10 +1,52 @@
 <!DOCTYPE html>
 <html lang="it">
 <head>
-  <meta charset="UTF-8">
-  <title>Pagina statica</title>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>La Mia Collezione Film</title>
+    <link rel="stylesheet" href="css/style.css">
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
 </head>
 <body>
-  <h1>jenny scema</h1>
+    <header>
+        <div class="container">
+            <h1><i class="fas fa-film"></i> La Mia Collezione Film</h1>
+            <div class="search-box">
+                <input type="text" id="searchInput" placeholder="Cerca film...">
+                <button id="searchBtn"><i class="fas fa-search"></i></button>
+            </div>
+        </div>
+    </header>
+
+    <nav>
+        <div class="container">
+            <button class="nav-btn active" data-category="trending">Trending</button>
+            <button class="nav-btn" data-category="popular">Popolari</button>
+            <button class="nav-btn" data-category="top_rated">Top Rated</button>
+        </div>
+    </nav>
+
+    <main class="container">
+        <div id="moviesGrid" class="movies-grid">
+            <!-- I film appariranno qui -->
+        </div>
+    </main>
+
+    <!-- Modal per dettagli film -->
+    <div id="movieModal" class="modal">
+        <div class="modal-content">
+            <span class="close">&times;</span>
+            <div id="movieDetails"></div>
+        </div>
+    </div>
+
+    <footer>
+        <div class="container">
+            <p>© 2024 La Mia Collezione Film - Dati forniti da TMDb</p>
+        </div>
+    </footer>
+
+    <script src="js/tmdb.js"></script>
+    <script src="js/app.js"></script>
 </body>
 </html>
